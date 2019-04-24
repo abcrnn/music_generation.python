@@ -1,9 +1,9 @@
 import keras
 import numpy as np
 from music21 import *
-from models import MusicModel
 import os
 import json
+import traceback
 
 def generate_sequence(model, vocab_map, initial_index=0, seq_length=300, return_heatmap=False):
     
@@ -37,7 +37,7 @@ def generate_sequence(model, vocab_map, initial_index=0, seq_length=300, return_
     else: return str_seq
     
 
-def save_midi(music_abc, save_path='./midi.mid'):
+def save_midi(music_abc, save_path='./midi.mid', print_trace=False):
     # print(music_abc)
     try:
         abcScore = converter.parse(music_abc, format='abc')
@@ -46,8 +46,9 @@ def save_midi(music_abc, save_path='./midi.mid'):
         mf.open(save_path, 'wb')
         mf.write()
         mf.close()
-    except:
-        print('failed')
+    except Exception as err:
+        print('failed parsing')
+        if print_trace: traceback.print_exc()
         return False
     return True
     
@@ -80,6 +81,7 @@ def generate_midi_batch(batch_size=10, save_dir='./generated_midi/', func_args=N
 
     
 def main():
+    from models import MusicModel
     BATCH_SIZE = 1
     SEQ_LENGTH = 1
     # MODEL_DIR = './music_model/04_20_19_GenericsLayers_256_128_drop15_classical_cleaned_strict_batchsize5000_window30/'#jazz
