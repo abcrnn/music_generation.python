@@ -4,6 +4,8 @@
 import keras
 from keras.callbacks import CSVLogger
 from keras.utils.np_utils import to_categorical
+from keras import optimizers
+from keras.regularizers import l1_l2
 
 ############PACKAGES##################
 import numpy as np
@@ -110,14 +112,20 @@ def get_data_info(data, save_path=None):
     n_vocab = len(vocab_map['char2idx'])
     return vocab_map
 
-def get_train_val(data, train_frac=0.8):
+def get_train_test_val(data, frac=[0.8,0.1, 0.1]):#define train and test. cuz the rest if for validation
     '''
     -data: np array of shape (N,) each cell in arrary
     represent the character in idx
     '''
-    n_train = int(len(data) * train_frac)
-    X_train, X_val = data[:n_train], data[n_train:len(data)]
-    return X_train, X_val
+    n_train = int(len(data) * frac[0])
+    n_test = int(len(data) * frac[1])
+    
+    train, test, val = data[:n_train], data[n_train:n_train+n_test], data[n_train+n_test:len(data)]
+    return {
+        'train': train,
+        'test' : test, 
+        'val' : val
+    }
     
     
     
@@ -128,17 +136,19 @@ def train_model(model_type, data, vocab_map, n_gram=64,
     n_vocab = len(vocab_map['char2idx'])
     
     all_characters = np.asarray([vocab_map['char2idx'][c] for c in data], dtype = np.int32)
-    Xy_train, Xy_val = get_train_val(all_characters, train_frac=0.8)
+    data_split = get_train_test_val(all_characters, frac=[0.8,0.1, 0.1])
+    Xy_train, Xy_val, Xy_test = data_split['train'], data_split['val'], data_split['test']
     
     print("Total number of training characters = "+str(Xy_train.shape[0])) #155222
     print("Total number of validation chars = "+str(Xy_val.shape[0]))
-    
+    print("Total number of Test chars = "+str(Xy_test.shape[0]))
     
     
     bookeeping = {}
     
     bookeeping['epoch_number'], bookeeping['train_loss'], bookeeping['train_accuracy'] = [], [], []
     bookeeping['val_loss'], bookeeping['val_accuracy'] = [], []
+    bookeeping['test_loss'], bookeeping['test_accuracy'] = [], []
     
     # train_dataloader = KerasBatchGenerator(Xy_train, num_steps=n_gram, 
     #                                        batch_size=batch_size,
@@ -164,6 +174,7 @@ def train_model(model_type, data, vocab_map, n_gram=64,
 
             val_dataloader = read_batches(Xy_val, n_vocab, batch_size=batch_size, n_gram=n_gram)
             train_dataloader = read_batches(Xy_train, n_vocab, batch_size=batch_size, n_gram=n_gram)
+            test_dataloader = read_batches(Xy_test, n_vocab, batch_size=batch_size, n_gram=n_gram)
 
             for i, (x, y) in enumerate(train_dataloader):
                 final_epoch_loss, final_epoch_accuracy = model.train_on_batch(x, y) #check documentation of train_on_batch here: https://keras.io/models/sequential/
@@ -174,18 +185,26 @@ def train_model(model_type, data, vocab_map, n_gram=64,
             toc = time.time()
             print("Finished in ", toc-tic)
             #eval on validation set
-            print('\nEvaluating')
+            print('\nEvaluating on validation')
             for i, (x, y) in enumerate(val_dataloader):
                 final_epoch_val_loss, final_epoch_val_accuracy = model.test_on_batch(x, y)
                 print("Batch: {}, Loss: {}, Accuracy: {}".format(i+1, final_epoch_val_loss,
                                                                  final_epoch_val_accuracy))
 
-
+            #eval on test set
+            print('\nEvaluating on test...')
+            for i, (x, y) in enumerate(test_dataloader):
+                final_epoch_test_loss, final_epoch_test_accuracy = model.test_on_batch(x, y)
+            print('Finished epochs', epoch)
+            
             bookeeping['val_loss'].append(final_epoch_val_loss)
             bookeeping['val_accuracy'].append(final_epoch_val_accuracy)
 
             bookeeping['train_loss'].append(final_epoch_loss)
             bookeeping['train_accuracy'].append(final_epoch_accuracy)
+    
+            bookeeping['test_loss'].append(final_epoch_test_loss)
+            bookeeping['test_accuracy'].append(final_epoch_test_accuracy)
 
             #llog to csv
             # with open(model_folder+"/log.csv", 'w') as file_handler:
@@ -201,7 +220,7 @@ def train_model(model_type, data, vocab_map, n_gram=64,
                     os.makedirs(model_weights_directory)
                 model.save_weights(os.path.join(model_weights_directory, "Weights_{}.h5".format(epoch+1)))
                 print('Saved Weights at epoch {} to file Weights_{}.h5'.format(epoch+1, epoch+1))
-
+            print()
     #creating dataframe and record all the losses and accuracies at each epoch
     log_frame = pd.DataFrame(columns = ["Epoch", "train_loss", "train_accuracy", 'val_loss', 'val_accuracy'])
     log_frame["Epoch"] = epoch_number
@@ -221,14 +240,15 @@ if __name__ == "__main__":
     N_GRAM = 30
     MODEL_DIR = './music_model/'+sys.argv[1]
     # DATA_PATH = './data/classical_music_midi/processed_clean_abc_small.txt'
-    # DATA_PATH = './data/jazz_music_midi/processed_clean_abc.txt'
-    DATA_PATH = './data/jig_hornpipes_cleaned.txt'
+        DATA_PATH = './data/jazz_music_midi/processed_clean_abc_small.txt'
+    # DATA_PATH = './data/jig_hornpipes_cleaned.txt'
     # DATA_PATH = './data/notthing_ham_full_cleaned.txt'
     MODEL_TYPE = 'Default'#unuse for now
     TRANSFER = False
-    model_choice = 'BidirectionalLayersRNNGeneric'
-    save_weight_every = 1
-    DROP_RATE = 0.45
+    model_choice = 'LSTMSkipConnection'
+    save_weight_every = 2
+    DROP_RATE = 0.
+    DROP_EMB = 0.05
     VISUALIZE_MODEL = False
     
     file = open(DATA_PATH, mode = 'r')
@@ -242,20 +262,27 @@ if __name__ == "__main__":
     n_vocab = len(vocab_map['char2idx'])
     
     if model_choice is 'LayersRNNGeneric':
+        regularizer = l1_l2(l1=0.01, l2=0.01)
+        print('regularizer\n', regularizer.__dict__)
+        
         model = MusicModel(n_vocab, phase='train').LayersRNNGeneric(batch_input_shape=(BATCH_SIZE, N_GRAM),
-                                                    layers=['lstm', 'lstm', 'lstm'], 
+                                                    layers=['lstm'], 
                                                      emb_dim=512,
-                                                     layers_size=[256, 256, 256], drop_rate=DROP_RATE)#0.15
+                                                     layers_size=[256], regularizer=regularizer, 
+                                                    drop_rate=DROP_RATE)#0.15
     elif model_choice is 'BidirectionalLayersRNNGeneric':
         model = MusicModel(n_vocab, phase='train').BidirectionalLayersRNNGeneric(batch_input_shape=(BATCH_SIZE, N_GRAM),
                                                     layers=['lstm', 'lstm'], 
                                                      emb_dim=256,
                                                      layers_size=[256, 128], drop_rate=DROP_RATE)#0.15
     elif model_choice is 'LSTMSkipConnection':
+        
+        regularizer = l1_l2(l1=1e-2, l2=0.)
+        print('regularizer\n', regularizer.__dict__)
         model = MusicModel(n_vocab).LSTMSkipConnection(batch_input_shape=(BATCH_SIZE, N_GRAM),
-                    layers=[128, 128, 256, 128, 128],
-                                                    # layers=[256],   
-                                                                emb_dim=256,drop_rate=DROP_RATE)#0.35
+                                    layers=[128, 256, 128],   
+                                    emb_dim=256,drop_emb=DROP_EMB,
+                                    drop_rate=DROP_RATE,regularizer=regularizer)#0.35
     elif model_choice is 'LSTMSkipConnectionDropBetween':
         model = MusicModel(n_vocab).LSTMSkipConnectionDropBetween(batch_input_shape=(BATCH_SIZE, N_GRAM),
                     layers=[1024], 
@@ -279,8 +306,13 @@ if __name__ == "__main__":
     
     print('\nModel choice:', model_choice)
     print('Drop Rate:', DROP_RATE)
+    print('DROP_EMB:', DROP_EMB)
     print('\n',model.summary())
-    model.compile(loss = "categorical_crossentropy", optimizer = "adam", metrics = ["accuracy"])
+    optimizer = optimizers.Adam(lr=0.0005, beta_1=0.9, beta_2=0.999, epsilon=None, decay=1e-6, amsgrad=False)
+    print('Optimizern\n', optimizer.__dict__)
+    print('model dict\n', model.__dict__)
+    
+    model.compile(loss = "categorical_crossentropy", optimizer = optimizer, metrics = ["accuracy"])
     
     print('Training on ', DATA_PATH)
     
