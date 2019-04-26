@@ -65,8 +65,11 @@ if __name__ == "__main__":
     
     DATA_PATH = './data/jig_hornpipes_cleaned.txt'
     N_ITER = int(sys.argv[2])
-    MODEL_DIR = './hmm_model/' + sys.argv[1]+'_iter'+str(N_ITER) + '/'
+    FEATURES_MULTIPLIER = 4
+    MODEL_DIR = './hmm_model/' + sys.argv[1]+'_iter'+str(N_ITER) + '_featuremult'+str(FEATURES_MULTIPLIER)+ '/'
     
+    
+    print('FEATURES_MULTIPLIER', FEATURES_MULTIPLIER)
     print('Saving model in ', MODEL_DIR)
     #make sure path to model dir exist
     if not os.path.exists(MODEL_DIR):
@@ -81,9 +84,8 @@ if __name__ == "__main__":
     
     all_characters = np.asarray([vocab_map['char2idx'][c] for c in data], dtype = np.int32)
     Xy_train, Xy_val = get_train_val(all_characters, train_frac=0.8)
-
     print('Init hmm model')
-    model = built_model(type='MultinomialHMM', n_components=n_vocab*8, n_iter=N_ITER)
+    model = built_model(type='MultinomialHMM', n_components=n_vocab*FEATURES_MULTIPLIER, n_iter=N_ITER)
     
     fd = FreqDist(all_characters)
     frequencies = np.fromiter((fd.freq(i) for i in range(n_vocab)), dtype=np.float64)

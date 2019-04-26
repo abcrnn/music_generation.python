@@ -12,6 +12,8 @@ from keras.layers import (Dropout, TimeDistributed,
                           Bidirectional,
                           LSTM, RNN, GRU)
 
+
+
 from keras.layers.merge import add
 
 # from AttentionWeightedAverage import AttentionWeightedAverage
@@ -93,7 +95,7 @@ class MusicModel(object):
         return self.model
     
     def LayersRNNGeneric(self, batch_input_shape=None, layers=['lstm', 'lstm', 'lstm'], 
-                         layers_size=[128, 128, 128], emb_dim=512,
+                         layers_size=[128, 128, 128], emb_dim=512, regularizer=None,
                          drop_rate=0.35):
         self.model = Sequential([Embedding(input_dim = self.n_vocab, output_dim = emb_dim, batch_input_shape= batch_input_shape)], 
                                 name = "embd_1")
@@ -105,8 +107,12 @@ class MusicModel(object):
             
             if layer is 'lstm':
                 self.model.add(
-                    LSTM(layers_size[idx], return_sequences = return_sequences, 
+                    LSTM(layers_size[idx], 
+                         return_sequences = return_sequences, 
                          stateful = True, 
+                         dropout=drop_rate,
+                         recurrent_dropout = drop_rate,
+                         kernel_regularizer = regularizer,
                          name='lstm_%d_%d'%(idx, layers_size[idx]))
                 )
             elif layer is 'gru':
@@ -115,8 +121,6 @@ class MusicModel(object):
                 self.model.add(RNN(layers_size[idx], return_sequences = return_sequences, stateful = True))
             else:
                 raise ValueError ("Unknown layer name", layer)
-
-            self.model.add(Dropout(drop_rate, name='drop_%d'%idx))
             
         if self.phase is 'train': 
             self.model.add(
@@ -131,12 +135,16 @@ class MusicModel(object):
         self.model.add(Activation("softmax"))
         
         return self.model
-    def LSTMSkipConnection(self, layers=[128, 128], batch_input_shape=None, emb_dim=256,drop_rate=0.35):
+    def LSTMSkipConnection(self, layers=[128, 128], batch_input_shape=None, emb_dim=256,drop_emb=0.15, 
+                           drop_rate=0.45,
+                            regularizer=None):
         '''
+        #: Recurrent dropout masks (or "drops") the connections between the recurrent units; that would be the horizontal arrows in your picture.
         Using Tensorflow graph style
         code base inspired by deepmoji by Felbo et al
         https://arxiv.org/pdf/1708.00524.pdf
         '''
+        
         input_layer = Input(batch_shape=batch_input_shape, name='input')
         embedded = Embedding(input_dim = self.n_vocab, 
                                output_dim = emb_dim,
@@ -147,7 +155,12 @@ class MusicModel(object):
         layer_output = []
         prev_out = drop
         for idx, layer in enumerate(layers): 
-            out = LSTM(layer, return_sequences = True, stateful = True, name='lstm_layer%d'%idx)(prev_out)
+            out = LSTM(layer, return_sequences = True, 
+                       stateful = True, 
+                       dropout = drop_rate, 
+                       recurrent_dropout = drop_rate,
+                       kernel_regularizer = regularizer,
+                       name='lstm_layer%d'%idx)(prev_out)
             layer_output.append(out)
             prev_out = out
             

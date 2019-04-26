@@ -85,11 +85,11 @@ def main():
     BATCH_SIZE = 1
     SEQ_LENGTH = 1
     # MODEL_DIR = './music_model/04_20_19_GenericsLayers_256_128_drop15_classical_cleaned_strict_batchsize5000_window30/'#jazz
-    MODEL_DIR = './music_model/04_21_19_ResidualLSTM_depth4_width128_drop15_classical_cleaned_small_batchsize20_window30/'
-    EPOCH = 21
-    EVAL_FOLDER = 'test_eval_' + str(EPOCH) + 'epoch/'
+    MODEL_DIR = './music_model/LSTMSkipConnection_many2many_128_256_128_layers_lstm/'
+    EPOCH = 60
+    EVAL_FOLDER = '04_25_19_test_eval_' + str(EPOCH) + 'epoch/'
     WEIGHT_PATH = MODEL_DIR+'/model_weight/'+"Weights_{}.h5".format(EPOCH)
-    DROP_RATE = 0.15
+    DROP_RATE = 0.35
     
     with open(os.path.join(MODEL_DIR, 'model_dictionary.json')) as f:
         vocab_map = json.load(f)
@@ -101,12 +101,15 @@ def main():
     #                                                     layers=['lstm','lstm'], 
     #                                                      emb_dim=512,
     #                                                      layers_size=[256, 128], drop_rate=0.25)
-    model = MusicModel(n_vocab, phase='test').ResidualLSTM(batch_input_shape=(BATCH_SIZE, SEQ_LENGTH),
-                                            rnn_width=128,
-                                            rnn_depth=4,
-                                            emb_dim=256,
-                                            drop_rate=DROP_RATE)
-                 
+    # model = MusicModel(n_vocab, phase='test').ResidualLSTM(batch_input_shape=(BATCH_SIZE, SEQ_LENGTH),
+    #                                         rnn_width=128,
+    #                                         rnn_depth=4,
+    #                                         emb_dim=256,
+    #                                         drop_rate=DROP_RATE)
+    model = MusicModel(n_vocab).LSTMSkipConnection(batch_input_shape=(BATCH_SIZE, SEQ_LENGTH),
+    #                                                                 layers=[128, 256, 128],
+                                                                   layers = [128,256,128],
+                                                                    emb_dim=256,drop_rate=DROP_RATE)
     model.load_weights(WEIGHT_PATH)
     if not os.path.exists(MODEL_DIR+EVAL_FOLDER):
         os.makedirs(MODEL_DIR+EVAL_FOLDER)
