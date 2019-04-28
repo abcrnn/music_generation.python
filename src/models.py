@@ -151,15 +151,28 @@ class MusicModel(object):
                                # batch_input_shape= batch_input_shape,
                                name='embedding')(input_layer)
         drop = Dropout(drop_rate, name='drop_layer1')(embedded)
-
+        
+        stateful = None
+        if self.phase is 'train': #use default
+            stateful = True
+            recurrent_initializer='orthogonal'
+            kernel_initializer='glorot_uniform'
+        else: 
+            stateful = False
+            recurrent_initializer='random_uniform'
+            kernel_initializer='random_uniform'
+            
         layer_output = []
         prev_out = drop
         for idx, layer in enumerate(layers): 
             out = LSTM(layer, return_sequences = True, 
-                       stateful = True, 
+                       stateful = stateful, 
                        dropout = drop_rate, 
                        recurrent_dropout = drop_rate,
                        kernel_regularizer = regularizer,
+                       implementation=1,
+                       recurrent_initializer=recurrent_initializer,
+                       kernel_initializer=kernel_initializer,
                        name='lstm_layer%d'%idx)(prev_out)
             layer_output.append(out)
             prev_out = out
