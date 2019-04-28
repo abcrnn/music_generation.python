@@ -1,0 +1,2 @@
+LSTMSkipConnection_many2many_128_256_128_layers_lstm
+epochs: 60
