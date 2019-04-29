@@ -4,8 +4,6 @@
 </p>
 
 
-
-# abcRNN
 **Problem**: New ideas are hard to come by. Musicians occasionally have hard to generating new music. Most musicians need inspiration before composing their own music.
 
 **Goal**: The goal of this app is to help artists to create new music on a specific genre.
