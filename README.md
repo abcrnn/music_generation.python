@@ -1,4 +1,9 @@
-->![abcRNN logo](https://abcrnn.github.io/img/abcRnn_logo.png)<-
+
+<p align="center">
+  <img width="180" height="180" src="https://abcrnn.github.io/img/abcRnn_logo.png">
+</p>
+
+
 
 # abcRNN
 **Problem**: New ideas are hard to come by. Musicians occasionally have hard to generating new music. Most musicians need inspiration before composing their own music.
