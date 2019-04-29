@@ -12,6 +12,8 @@ Try it out yourself. [**web app demo**](https://abcrnn.github.io/)
 
 Check out a list of sample output [**here**](https://soundcloud.com/datnguyen5653/sets/abcrnn-great-sample)
 
+Our project report. [PDF](https://abcrnn.github.io/archives/report.pdf)
+
 
 ### Technology
 - In this work, Our experimentation is conducted using Python utilizing Keras and Tensorflow. The web app is built with tensorflowjs.
