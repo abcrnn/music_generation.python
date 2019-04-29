@@ -1,3 +1,5 @@
+<center><img src="https://abcrnn.github.io/img/abcRnn_logo.png" height="100" width="100"></center>
+
 # abcRNN
 **Problem**: New ideas are hard to come by. Musicians occasionally have hard to generating new music. Most musicians need inspiration before composing their own music.
 
@@ -6,5 +8,14 @@
 Try it out yourself. [**web app demo**](https://abcrnn.github.io/)
 
 Check out a list of sample output [**here**](https://soundcloud.com/datnguyen5653/sets/abcrnn-great-sample)
+
+
+### Technology
+- In this work, Our experimentation is conducted using Python utilizing Keras and Tensorflow. The web app is built with tensorflowjs.
+
+### Dependencies
+- Keras: 2.2.4
+- Tensorflow: 1.15.1
+
 
 
